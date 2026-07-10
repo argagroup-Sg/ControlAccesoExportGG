@@ -164,7 +164,7 @@
   <div id="vista-escaneo">
     <div id="menu-botones">
       <button class="btn-accion btn-encender" onclick="activarModo('escanearAcceso')">ESCANEAR INGRESO</button>
-      <button class="btn-accion btn-devolver" onclick="activarModo('escanearDevolver')">ESCANEAR DEVOLUCIÓN</button>
+      <button class="btn-accion btn-devolver" onclick="activarModo('escanearDevolver')">ESCANEAR SALIDA</button>
     </div>
     
     <!-- Botón para apagar la cámara y volver al menú principal de botones -->
@@ -207,7 +207,7 @@
     </div>
   </div>
 
-  <!-- VISTA 3: PANTALLA DE CONFIRMACIÓN DE DEVOLUCIÓN -->
+  <!-- VISTA 3: PANTALLA DE CONFIRMACIÓN DE SALIDA -->
   <div id="vista-resultado-devolver" style="display: none;">
     <div class="tarjeta-autorizado tarjeta-devolver">
       <div id="devolver-mensaje-badge" class="badge-exito badge-devolver">-</div>
@@ -237,7 +237,7 @@
 
   <script>
     // URL DE TU IMPLEMENTACIÓN DE GOOGLE APPS SCRIPT 
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx4XYgRzycqQyUrJoMfQxu6j0Twem6pKScRl5HGfntDXrhprUUNmPbySXTWio2oCOsW/exec";
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyxXsh4GNxdkzX2pP9hd5HPRlCUeqOeZ300vSwR5GFGZJgNHpB0kpX694yvN-ITTEp4/exec";
     let html5QrcodeScanner = null;
     let procesandoScan = false;
     let modoAccionActual = "";
