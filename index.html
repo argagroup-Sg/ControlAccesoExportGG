@@ -236,8 +236,8 @@
   </div>
 
   <script>
-    // URL DE TU IMPLEMENTACIÓN DE GOOGLE APPS SCRIPT 
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbymF4TdeChjf6nUecD-FC_g5NfKvWSq4O8YNonpoLRFE52-G3p4xZyh9LAeLEze5XZr/exec";
+    /* URL DE TU IMPLEMENTACIÓN DE GOOGLE APPS SCRIPT 
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwj_RhrytklDBKa-eTlaOHV6an9zoLYFz1cdE81mJ9xMnHpAuWCIWCivZyRgsOFv8iQ/exec";
     let html5QrcodeScanner = null;
     let procesandoScan = false;
     let modoAccionActual = "";
@@ -447,7 +447,228 @@
       document.getElementById("btnCancelar").style.display = "none";
       document.getElementById("menu-botones").style.display = "block";
       document.getElementById("vista-escaneo").style.display = "block";
+    }*/
+
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwj_RhrytklDBKa-eTlaOHV6an9zoLYFz1cdE81mJ9xMnHpAuWCIWCivZyRgsOFv8iQ/exec";
+    let html5QrcodeScanner = null;
+    let procesandoScan = false;
+    let modoAccionActual = "";
+    let temporizadorRed = null; // Control para micro-cortes
+
+    window.onerror = function(msg, url, linenumber) {
+      const r = document.getElementById("resultado");
+      r.className = "red";
+      r.innerHTML = "Error interno: " + msg + " (Línea: " + linenumber + ")";
+      return false;
+    };
+
+    function activarModo(modo) {
+      modoAccionActual = modo;
+      document.getElementById("menu-botones").style.display = "none";
+      document.getElementById("btnCancelar").style.display = "inline-block";
+      verificarYArrancar();
     }
+
+    function verificarYArrancar() {
+      const r = document.getElementById("resultado");
+      if (typeof Html5Qrcode === "undefined") {
+        r.className = "red";
+        r.innerHTML = "Error local: El archivo de la librería no se cargó correctamente.";
+        return;
+      }
+      iniciarVideoTransmision();
+    }
+
+    function iniciarVideoTransmision() {
+      const r = document.getElementById("resultado");
+      r.className = "";
+      r.innerHTML = "Conectando con la cámara del dispositivo...";
+      
+      try {
+        html5QrcodeScanner = new Html5Qrcode("reader");
+        const config = {};
+        
+        html5QrcodeScanner.start(
+          { facingMode: "environment" },
+          config,
+          codigoDetectadoEnVivo
+        ).then(() => {
+          r.className = "green";
+          r.innerHTML = "Cámara encendida. Enfoque un código QR.";
+        }).catch(err => {
+          html5QrcodeScanner.start(
+            undefined,
+            config,
+            codigoDetectadoEnVivo
+          ).then(() => {
+            r.className = "green";
+            r.innerHTML = "Cámara encendida. Si es la frontal, gire el teléfono.";
+          }).catch(errFinal => {
+            r.className = "red";
+            r.innerHTML = "Acceso denegado o error de hardware: " + errFinal;
+            document.getElementById("menu-botones").style.display = "block";
+            document.getElementById("btnCancelar").style.display = "none";
+          });
+        });
+      } catch (exception) {
+        r.className = "red";
+        r.innerHTML = "Fallo en ejecución: " + exception.message;
+      }
+    }
+
+    function codigoDetectadoEnVivo(decodedText) {
+      if (procesandoScan) return;
+      procesandoScan = true;
+      
+      const r = document.getElementById("resultado");
+      r.className = "";
+      r.innerHTML = "Consultando validez del código...";
+      
+      html5QrcodeScanner.stop().then(() => {
+        const viejoScript = document.getElementById("jsonp-request");
+        if (viejoScript) viejoScript.remove();
+        
+        const accionBackend = modoAccionActual === "escanearAcceso" ? "buscarAsignar" : "devolver";
+        
+        // MANEJO DE TIMEOUT: Si Google no responde en 6 segundos, liberamos el bloqueo para evitar congelamientos
+        clearTimeout(temporizadorRed);
+        temporizadorRed = setTimeout(() => {
+          maniobrarErrorServidor("Red inestable. Verifique en Sheets si ingresó o vuelva a escanear.");
+        }, 6000);
+
+        const script = document.createElement("script");
+        script.id = "jsonp-request";
+        script.src = WEB_APP_URL + "?codigoQR=" + encodeURIComponent(decodedText) + "&accion=" + accionBackend + "&callback=procesarRespuestaServidorJSONP";
+        
+        script.onerror = function() {
+          clearTimeout(temporizadorRed);
+          maniobrarErrorServidor("Error de red o caída de conexión con Google.");
+        };
+        document.body.appendChild(script);
+      }).catch(err => {
+        procesandoScan = false;
+      });
+    }
+
+    // RETORNO GLOBAL JSONP
+    window.procesarRespuestaServidorJSONP = function(data) {
+      clearTimeout(temporizadorRed); // Conexión exitosa, cancelamos la alerta de timeout
+      
+      const script = document.getElementById("jsonp-request");
+      if (script) script.remove();
+      
+      const r = document.getElementById("resultado");
+      
+      if (data.ok) {
+        r.innerHTML = "";
+        r.className = "";
+        
+        if (modoAccionActual === "escanearAcceso") {
+          document.getElementById("cedula-nombre").innerText = data.nombre || "No especificado";
+          document.getElementById("cedula-num").innerText = data.cedula || "No especificado";
+          document.getElementById("cedula-turno").innerText = data.turno || "No especificado";
+          document.getElementById("cedula-area").innerText = data.area || "No especificado";
+          
+          const imgElement = document.getElementById("cedula-img");
+          if (data.imagenCedula) {
+            imgElement.src = data.imagenCedula;
+            imgElement.style.display = "block";
+          } else {
+            imgElement.style.display = "none";
+          }
+
+          document.getElementById("vista-escaneo").style.display = "none";
+          document.getElementById("vista-resultado").style.display = "block";
+
+        } else if (modoAccionActual === "escanearDevolver") {
+          document.getElementById("devolver-mensaje-badge").innerText = "✓ SALIDA REGISTRADA";
+          document.getElementById("devolver-nombre").innerText = data.nombre || "No especificado";
+          document.getElementById("devolver-cedula").innerText = data.cedula || "No especificado";
+          document.getElementById("devolver-turno").innerText = data.turno || "No especificado";
+          
+          const imgElement = document.getElementById("devolver-img");
+          if (data.imagenCedula) {
+            imgElement.src = data.imagenCedula;
+            imgElement.style.display = "block";
+          } else {
+            imgElement.style.display = "none";
+          }
+
+          document.getElementById("vista-escaneo").style.display = "none";
+          document.getElementById("vista-resultado-devolver").style.display = "block";
+        }
+      } else {
+        r.className = data.color || "red";
+        r.innerHTML = `<strong>${data.mensaje || "Error"}</strong><br>
+          ${data.nombre ? 'Nombre: ' + data.nombre + '<br>' : ''} 
+          ${data.turno ? 'Turno: ' + data.turno + '<br>' : ''}
+          ${data.area ? 'Area: ' + data.area : ''}`;
+        
+        setTimeout(() => {
+          r.innerHTML = "";
+          r.className = "";
+          procesandoScan = false;
+          iniciarVideoTransmision();
+        }, 5000); // Reducido a 5 segundos para agilizar los flujos de fila
+      }
+    };
+
+    function maniobrarErrorServidor(mensaje) {
+      const script = document.getElementById("jsonp-request");
+      if (script) script.remove();
+
+      const r = document.getElementById("resultado");
+      r.className = "orange";
+      r.innerHTML = "<strong>" + mensaje + "</strong>";
+      
+      setTimeout(() => {
+        r.innerHTML = "";
+        r.className = "";
+        procesandoScan = false;
+        iniciarVideoTransmision();
+      }, 5000);
+    }
+
+    function cancelarEscaneo() {
+      clearTimeout(temporizadorRed);
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.stop().then(() => { 
+          regresarAlMenuPrincipal(); 
+        }).catch(() => { 
+          regresarAlMenuPrincipal(); 
+        });
+      } else {
+        regresarAlMenuPrincipal();
+      }
+    }
+
+    function regresarAlMenuPrincipal() {
+      clearTimeout(temporizadorRed);
+      procesandoScan = false;
+      modoAccionActual = "";
+      
+      document.getElementById("cedula-nombre").innerText = "-";
+      document.getElementById("cedula-num").innerText = "-";
+      document.getElementById("cedula-turno").innerText = "-";
+      document.getElementById("cedula-area").innerText = "-";
+      document.getElementById("cedula-img").src = "";
+      
+      document.getElementById("devolver-nombre").innerText = "-";
+      document.getElementById("devolver-cedula").innerText = "-";
+      document.getElementById("devolver-turno").innerText = "-";
+      document.getElementById("devolver-img").src = "";
+      
+      const r = document.getElementById("resultado");
+      r.innerHTML = "";
+      r.className = "";
+      
+      document.getElementById("vista-resultado").style.display = "none";
+      document.getElementById("vista-resultado-devolver").style.display = "none";
+      document.getElementById("btnCancelar").style.display = "none";
+      document.getElementById("menu-botones").style.display = "block";
+      document.getElementById("vista-escaneo").style.display = "block";
+    }
+
   </script>
 </body>
 </html>
