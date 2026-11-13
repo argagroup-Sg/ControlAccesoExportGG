@@ -1,674 +1,599 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Control de Acceso QR</title>
-  <!-- Enlace local a la librería guardada en tu GitHub -->
-  <script src="./html5-qrcode.min.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin: 20px;
-      background-color: #f5f5f5;
-    }
-    h1 {
-      color: #1565c0;
-      margin-bottom: 20px;
-    }
-    /* Contenedores de Vistas */
-    #vista-escaneo, #vista-resultado, #vista-resultado-devolver {
-      width: 100%;
-      max-width: 400px;
-      margin: auto;
-    }
-    #reader {
-      width: 100%;
-      min-height: 300px;
-      margin: auto;
-      border-radius: 10px;
-      overflow: hidden;
-      background: #000;
-    }
-    #resultado {
-      margin-top: 20px;
-      padding: 15px;
-      border-radius: 10px;
-      font-weight: bold;
-      font-size: 18px;
-      min-height: 25px;
-    }
-    .green {
-      background: #c8e6c9;
-      color: #1b5e20;
-    }
-    .red {
-      background: #ffcdd2;
-      color: #b71c1c;
-    }
-    .orange {
-      background: #ffe0b2;
-      color: #e65100;
-    }
-    /* Estilos del Formulario de Datos Autorizados */
-    .tarjeta-autorizado {
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      border-top: 8px solid #2e7d32;
-      margin-top: 15px;
-    }
-    .tarjeta-devolver {
-      border-top-color: #e65100;
-    }
-    .badge-exito {
-      background: #e8f5e9;
-      color: #2e7d32;
-      padding: 10px;
-      border-radius: 6px;
-      font-weight: bold;
-      font-size: 20px;
-      margin-bottom: 15px;
-    }
-    .badge-devolver {
-      background: #fff3e0;
-      color: #e65100;
-    }
-    .info-grupo {
-      text-align: left;
-      margin-bottom: 12px;
-      border-bottom: 1px solid #f0f0f0;
-      padding-bottom: 6px;
-    }
-    .info-label {
-      font-size: 12px;
-      color: #757575;
-      text-transform: uppercase;
-      font-weight: bold;
-    }
-    .info-valor {
-      font-size: 18px;
-      color: #212121;
-      font-weight: 500;
-    }
-    /* Contenedor e Imagen de la Cédula */
-    .contenedor-foto {
-      margin: 15px 0;
-      border-radius: 8px;
-      overflow: hidden;
-      background: #eee;
-      border: 1px solid #ddd;
-      min-height: 150px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .foto-cedula {
-      width: 100%;
-      height: auto;
-      display: block;
-      object-fit: contain;
-    }
-    /* Botones */
-    .btn-accion {
-      color: white;
-      padding: 15px 30px;
-      font-size: 16px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      font-weight: bold;
-      width: 100%;
-      margin-top: 15px;
-      transition: background 0.2s;
-    }
-    .btn-encender {
-      background: #1565c0;
-      margin-bottom: 15px;
-    }
-    .btn-encender:hover {
-      background: #0d47a1;
-    }
-    .btn-devolver {
-      background: #e65100;
-      margin-bottom: 10px;
-    }
-    .btn-devolver:hover {
-      background: #b23c17;
-    }
-    .btn-volver {
-      background: #2e7d32;
-    }
-    .btn-volver:hover {
-      background: #1b5e20;
-    }
-    .btn-cancelar { 
-      background: #757575; 
-    }
-    .btn-cancelar:hover {
-      background: #616161;
-    }
-    /* Menú de botones */
-    #menu-botones {
-      margin-bottom: 20px;
-    }
-  </style>
-</head>
-<body>
-
-  <h1>CONTROL DE ACCESO QR</h1>
-
-  <!-- VISTA 1: PANTALLA DE ESCANEO CON MENÚ DE BOTONES -->
-  <div id="vista-escaneo">
-    <div id="menu-botones">
-      <button class="btn-accion btn-encender" onclick="activarModo('escanearAcceso')">ESCANEAR INGRESO</button>
-      <button class="btn-accion btn-devolver" onclick="activarModo('escanearDevolver')">ESCANEAR SALIDA</button>
-    </div>
-    
-    <!-- Botón para apagar la cámara y volver al menú principal de botones -->
-    <button class="btn-accion btn-cancelar" id="btnCancelar" style="display: none; margin-bottom: 15px;" onclick="cancelarEscaneo()">CANCELAR ESCANEO</button>
-    
-    <div id="reader"></div>
-    <div id="resultado"></div>
-  </div>
-
-  <!-- VISTA 2: FORMULARIO DE ACCESO AUTORIZADO -->
-  <div id="vista-resultado" style="display: none;">
-    <div class="tarjeta-autorizado">
-      <div class="badge-exito">✓ ACCESO AUTORIZADO</div>
-      
-      <div class="contenedor-foto">
-        <img id="cedula-img" class="foto-cedula" src="" alt="Fotografía Cédula">
-      </div>
-
-      <div class="info-grupo">
-        <div class="info-label">Nombre Completo</div>
-        <div id="cedula-nombre" class="info-valor">-</div>
-      </div>
-
-      <div class="info-grupo">
-        <div class="info-label">Documento de Identidad</div>
-        <div id="cedula-num" class="info-valor">-</div>
-      </div>
-
-      <div class="info-grupo">
-        <div class="info-label">Turno Asignado</div>
-        <div id="cedula-turno" class="info-valor">-</div>
-      </div>
-
-      <div class="info-grupo">
-        <div class="info-label">Area Asignada</div>
-        <div id="cedula-area" class="info-valor">-</div>
-      </div>
-
-      <button class="btn-accion btn-volver" onclick="regresarAlMenuPrincipal()">VOLVER A ESCANEAR</button>
-    </div>
-  </div>
-
-  <!-- VISTA 3: PANTALLA DE CONFIRMACIÓN DE SALIDA -->
-  <div id="vista-resultado-devolver" style="display: none;">
-    <div class="tarjeta-autorizado tarjeta-devolver">
-      <div id="devolver-mensaje-badge" class="badge-exito badge-devolver">-</div>
-      
-      <div class="contenedor-foto">
-        <img id="devolver-img" class="foto-cedula" src="" alt="Fotografía Cédula">
-      </div>
-
-      <div class="info-grupo">
-        <div class="info-label">Nombre Completo</div>
-        <div id="devolver-nombre" class="info-valor">-</div>
-      </div>
-
-      <div class="info-grupo">
-        <div class="info-label">Documento de Identidad</div>
-        <div id="devolver-cedula" class="info-valor">-</div>
-      </div>
-
-      <div class="info-grupo">
-        <div class="info-label">Turno</div>
-        <div id="devolver-turno" class="info-valor">-</div>
-      </div>
-
-      <button class="btn-accion btn-volver" onclick="regresarAlMenuPrincipal()">VOLVER A ESCANEAR</button>
-    </div>
-  </div>
-
-  <script>
-    /* URL DE TU IMPLEMENTACIÓN DE GOOGLE APPS SCRIPT 
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwj_RhrytklDBKa-eTlaOHV6an9zoLYFz1cdE81mJ9xMnHpAuWCIWCivZyRgsOFv8iQ/exec";
-    let html5QrcodeScanner = null;
-    let procesandoScan = false;
-    let modoAccionActual = "";
-
-    window.onerror = function(msg, url, linenumber) {
-      const r = document.getElementById("resultado");
-      r.className = "red";
-      r.innerHTML = "Error interno: " + msg + " (Línea: " + linenumber + ")";
-      return false;
-    };
-
-    function activarModo(modo) {
-      modoAccionActual = modo;
-      document.getElementById("menu-botones").style.display = "none";
-      document.getElementById("btnCancelar").style.display = "inline-block";
-      verificarYArrancar();
-    }
-
-    function verificarYArrancar() {
-      const r = document.getElementById("resultado");
-      if (typeof Html5Qrcode === "undefined") {
-        r.className = "red";
-        r.innerHTML = "Error local: El archivo de la librería no se cargó correctamente desde GitHub.";
-        return;
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#145fb4" />
+    <title>Control de Asistencia QR</title>
+    <script src="./html5-qrcode.min.js"></script>
+    <style>
+      :root {
+        --blue: #1767bd;
+        --orange: #e66a12;
+        --green: #25834b;
+        --purple: #7551a8;
+        --ink: #1c2935;
+        --muted: #687684;
+        --bg: #f2f5f8;
+        --line: #e4eaf0;
+        --shadow: 0 8px 28px rgba(22, 42, 62, 0.08);
       }
-      iniciarVideoTransmision();
-    }
-
-    function iniciarVideoTransmision() {
-      const r = document.getElementById("resultado");
-      r.className = "";
-      r.innerHTML = "Conectando con la cámara del dispositivo...";
-      
-      try {
-        html5QrcodeScanner = new Html5Qrcode("reader");
-        const config = {};
-        
-        html5QrcodeScanner.start(
-          { facingMode: "environment" },
-          config,
-          codigoDetectadoEnVivo
-        ).then(() => {
-          r.className = "green";
-          r.innerHTML = "Cámara encendida. Enfoque un código QR.";
-        }).catch(err => {
-          html5QrcodeScanner.start(
-            undefined,
-            config,
-            codigoDetectadoEnVivo
-          ).then(() => {
-            r.className = "green";
-            r.innerHTML = "Cámara encendida. Si es la frontal, gire el teléfono.";
-          }).catch(errFinal => {
-            r.className = "red";
-            r.innerHTML = "Acceso denegado o error de hardware: " + errFinal;
-            document.getElementById("menu-botones").style.display = "block";
-            document.getElementById("btnCancelar").style.display = "none";
-          });
-        });
-      } catch (exception) {
-        r.className = "red";
-        r.innerHTML = "Fallo en ejecución: " + exception.message;
+      * {
+        box-sizing: border-box;
       }
-    }
-
-    function codigoDetectadoEnVivo(decodedText) {
-      if (procesandoScan) return;
-      procesandoScan = true;
-      
-      const r = document.getElementById("resultado");
-      r.className = "";
-      r.innerHTML = "Consultando validez del código...";
-      
-      html5QrcodeScanner.stop().then(() => {
-        const viejoScript = document.getElementById("jsonp-request");
-        if (viejoScript) viejoScript.remove();
-        
-        // Convertir modo de la interfaz a acciones del backend
-        const accionBackend = modoAccionActual === "escanearAcceso" ? "buscarAsignar" : "devolver";
-        
-        const script = document.createElement("script");
-        script.id = "jsonp-request";
-        script.src = WEB_APP_URL + "?codigoQR=" + encodeURIComponent(decodedText) + "&accion=" + accionBackend + "&callback=procesarRespuestaServidorJSONP";
-        
-        script.onerror = function() {
-          maniobrarErrorServidor("Error crítico de conexión con Google.");
-        };
-        document.body.appendChild(script);
-      }).catch(err => {
-        procesandoScan = false;
-      });
-    }
-
-    // RETORNO GLOBAL JSONP
-    window.procesarRespuestaServidorJSONP = function(data) {
-      const script = document.getElementById("jsonp-request");
-      if (script) script.remove();
-      
-      const r = document.getElementById("resultado");
-      
-      if (data.ok) {
-        r.innerHTML = "";
-        r.className = "";
-        
-        // VISTA A: Acceso Autorizado (Ingreso)
-        if (modoAccionActual === "escanearAcceso") {
-          document.getElementById("cedula-nombre").innerText = data.nombre || "No especificado";
-          document.getElementById("cedula-num").innerText = data.cedula || "No especificado";
-          document.getElementById("cedula-turno").innerText = data.turno || "No especificado";
-          document.getElementById("cedula-area").innerText = data.area || "No especificado";
-          
-          const imgElement = document.getElementById("cedula-img");
-          if (data.imagenCedula) {
-            imgElement.src = data.imagenCedula;
-            imgElement.style.display = "block";
-          } else {
-            imgElement.style.display = "none";
-          }
-
-          document.getElementById("vista-escaneo").style.display = "none";
-          document.getElementById("vista-resultado").style.display = "block";
-
-        // VISTA B: Confirmar Devolución
-        } else if (modoAccionActual === "escanearDevolver") {
-          document.getElementById("devolver-mensaje-badge").innerText = "✓ SALIDA REGISTRADA";
-          document.getElementById("devolver-nombre").innerText = data.nombre || "No especificado";
-          document.getElementById("devolver-cedula").innerText = data.cedula || "No especificado";
-          document.getElementById("devolver-turno").innerText = data.turno || "No especificado";
-          
-          const imgElement = document.getElementById("devolver-img");
-          if (data.imagenCedula) {
-            imgElement.src = data.imagenCedula;
-            imgElement.style.display = "block";
-          } else {
-            imgElement.style.display = "none";
-          }
-
-          document.getElementById("vista-escaneo").style.display = "none";
-          document.getElementById("vista-resultado-devolver").style.display = "block";
+      body {
+        margin: 0;
+        padding: 24px 16px 36px;
+        background: var(--bg);
+        font-family: Inter, Arial, sans-serif;
+        color: var(--ink);
+      }
+      main {
+        max-width: 620px;
+        margin: auto;
+      }
+      header {
+        text-align: center;
+        margin: 2px 0 22px;
+      }
+      h1 {
+        font-size: clamp(25px, 5vw, 36px);
+        letter-spacing: 0.3px;
+        color: var(--blue);
+        margin: 0 0 7px;
+        font-weight: 850;
+      }
+      header p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .card {
+        background: #fff;
+        border: 1px solid rgba(220, 228, 236, 0.8);
+        border-radius: 18px;
+        padding: 20px;
+        margin: 14px 0;
+        box-shadow: var(--shadow);
+      }
+      .section-title {
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.8px;
+        color: #657382;
+        margin: 0 0 13px;
+        text-align: left;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 11px;
+      }
+      .action {
+        border: 0;
+        border-radius: 12px;
+        color: white;
+        min-height: 76px;
+        padding: 13px 10px;
+        font-size: 14px;
+        font-weight: 800;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        transition: transform 0.15s;
+      }
+      .action:active {
+        transform: scale(0.98);
+      }
+      .blue {
+        background: var(--blue);
+      }
+      .orange {
+        background: var(--orange);
+      }
+      .green {
+        background: var(--green);
+      }
+      .purple {
+        background: var(--purple);
+      }
+      .dark {
+        background: #263746;
+      }
+      .wide {
+        grid-column: 1/-1;
+      }
+      .action span {
+        font-size: 11px;
+        font-weight: 500;
+        opacity: 0.9;
+      }
+      .selector {
+        display: none;
+        text-align: left;
+        margin: 0 0 15px;
+      }
+      .selector label {
+        display: block;
+        font-size: 12px;
+        font-weight: 800;
+        color: #596775;
+        margin: 0 0 7px;
+      }
+      .selector select {
+        width: 100%;
+        border: 1px solid #d5dee7;
+        border-radius: 10px;
+        padding: 13px;
+        background: #fff;
+        color: var(--ink);
+        font-size: 15px;
+      }
+      .hint {
+        font-size: 11px;
+        color: #8994a0;
+        margin: 7px 0 0;
+      }
+      #scanCard,
+      #resultCard {
+        display: none;
+      }
+      .scan-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        gap: 10px;
+      }
+      .scan-head strong {
+        color: var(--blue);
+        font-size: 13px;
+      }
+      .pill {
+        font-size: 10px;
+        font-weight: 800;
+        padding: 6px 9px;
+        border-radius: 20px;
+        background: #eaf2fb;
+        color: var(--blue);
+      }
+      #reader {
+        width: 100%;
+        min-height: 280px;
+        background: #080b0f;
+        border-radius: 13px;
+        overflow: hidden;
+      }
+      #status {
+        padding: 12px;
+        border-radius: 10px;
+        margin-top: 12px;
+        background: #eef2f6;
+        color: #53616e;
+        font-size: 13px;
+        font-weight: 700;
+      }
+      #status.ok {
+        background: #e6f5eb;
+        color: #216d3a;
+      }
+      #status.error {
+        background: #fdeaea;
+        color: #a32929;
+      }
+      .secondary {
+        border: 1px solid var(--line);
+        background: #f7f9fb;
+        color: #455462;
+        border-radius: 10px;
+        padding: 12px;
+        font-weight: 800;
+        cursor: pointer;
+        width: 100%;
+        margin-top: 12px;
+      }
+      .person {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        text-align: left;
+      }
+      .person img {
+        width: 76px;
+        height: 76px;
+        object-fit: cover;
+        border-radius: 13px;
+        background: #eef1f4;
+      }
+      .person h2 {
+        font-size: 17px;
+        margin: 0 0 5px;
+        line-height: 1.25;
+      }
+      .person p {
+        font-size: 12px;
+        color: var(--muted);
+        margin: 3px 0;
+      }
+      .success {
+        margin: 18px 0 12px;
+        padding: 17px;
+        border-radius: 12px;
+        text-align: center;
+        background: #e8f6ed;
+        color: #216d3a;
+        font-weight: 850;
+        font-size: 16px;
+      }
+      .details {
+        font-size: 13px;
+        color: #596775;
+        line-height: 1.9;
+        text-align: left;
+      }
+      .details b {
+        color: #263746;
+      }
+      footer {
+        text-align: center;
+        color: #9aa4ae;
+        font-size: 11px;
+        margin-top: 20px;
+      }
+      @media (max-width: 390px) {
+        body {
+          padding: 15px 10px 28px;
         }
-      } else {
-        // ERROR: Mantiene la vista de escaneo y muestra el aviso del servidor
-        r.className = data.color || "red";
-        r.innerHTML = `<strong>${data.mensaje || "Error"}</strong><br>
-          ${data.nombre ? 'Nombre: ' + data.nombre + '<br>' : ''} 
-          ${data.turno ? 'Turno: ' + data.turno + '<br>' : ''}
-          ${data.area ? 'Area: ' + data.area : ''}`;
-        
-        setTimeout(() => {
-          r.innerHTML = "";
-          r.className = "";
-          procesandoScan = false;
-          iniciarVideoTransmision();
-        }, 8000);
-      }
-    };
-
-    function maniobrarErrorServidor(mensaje) {
-      const r = document.getElementById("resultado");
-      r.className = "red";
-      r.innerHTML = "<strong>" + mensaje + "</strong>";
-      setTimeout(() => {
-        r.innerHTML = "";
-        r.className = "";
-        procesandoScan = false;
-        iniciarVideoTransmision();
-      }, 8000);
-    }
-
-    function cancelarEscaneo() {
-      if (html5QrcodeScanner) {
-        html5QrcodeScanner.stop().then(() => { 
-          regresarAlMenuPrincipal(); 
-        }).catch(() => { 
-          regresarAlMenuPrincipal(); 
-        });
-      } else {
-        regresarAlMenuPrincipal();
-      }
-    }
-
-    function regresarAlMenuPrincipal() {
-      procesandoScan = false;
-      modoAccionActual = "";
-      
-      // Limpiar formulario de acceso
-      document.getElementById("cedula-nombre").innerText = "-";
-      document.getElementById("cedula-num").innerText = "-";
-      document.getElementById("cedula-turno").innerText = "-";
-      document.getElementById("cedula-area").innerText = "-";
-      document.getElementById("cedula-img").src = "";
-      
-      // Limpiar formulario de devolución
-      document.getElementById("devolver-nombre").innerText = "-";
-      document.getElementById("devolver-cedula").innerText = "-";
-      document.getElementById("devolver-turno").innerText = "-";
-      document.getElementById("devolver-img").src = "";
-      
-      // Limpiar resultado
-      const r = document.getElementById("resultado");
-      r.innerHTML = "";
-      r.className = "";
-      
-      // Volver a vista principal
-      document.getElementById("vista-resultado").style.display = "none";
-      document.getElementById("vista-resultado-devolver").style.display = "none";
-      document.getElementById("btnCancelar").style.display = "none";
-      document.getElementById("menu-botones").style.display = "block";
-      document.getElementById("vista-escaneo").style.display = "block";
-    }*/
-
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyGzCdlXGzlF7ggBHHLgxpcHx46xJYwVo4M6IhVZn7d5XG4V8TQ8LBicFw4A9XCo3Ar/exec";
-    let html5QrcodeScanner = null;
-    let procesandoScan = false;
-    let modoAccionActual = "";
-    let temporizadorRed = null; // Control para micro-cortes
-
-    window.onerror = function(msg, url, linenumber) {
-      const r = document.getElementById("resultado");
-      r.className = "red";
-      r.innerHTML = "Error interno: " + msg + " (Línea: " + linenumber + ")";
-      return false;
-    };
-
-    function activarModo(modo) {
-      modoAccionActual = modo;
-      document.getElementById("menu-botones").style.display = "none";
-      document.getElementById("btnCancelar").style.display = "inline-block";
-      verificarYArrancar();
-    }
-
-    function verificarYArrancar() {
-      const r = document.getElementById("resultado");
-      if (typeof Html5Qrcode === "undefined") {
-        r.className = "red";
-        r.innerHTML = "Error local: El archivo de la librería no se cargó correctamente.";
-        return;
-      }
-      iniciarVideoTransmision();
-    }
-
-    function iniciarVideoTransmision() {
-      const r = document.getElementById("resultado");
-      r.className = "";
-      r.innerHTML = "Conectando con la cámara del dispositivo...";
-      
-      try {
-        html5QrcodeScanner = new Html5Qrcode("reader");
-        const config = {};
-        
-        html5QrcodeScanner.start(
-          { facingMode: "environment" },
-          config,
-          codigoDetectadoEnVivo
-        ).then(() => {
-          r.className = "green";
-          r.innerHTML = "Cámara encendida. Enfoque un código QR.";
-        }).catch(err => {
-          html5QrcodeScanner.start(
-            undefined,
-            config,
-            codigoDetectadoEnVivo
-          ).then(() => {
-            r.className = "green";
-            r.innerHTML = "Cámara encendida. Si es la frontal, gire el teléfono.";
-          }).catch(errFinal => {
-            r.className = "red";
-            r.innerHTML = "Acceso denegado o error de hardware: " + errFinal;
-            document.getElementById("menu-botones").style.display = "block";
-            document.getElementById("btnCancelar").style.display = "none";
-          });
-        });
-      } catch (exception) {
-        r.className = "red";
-        r.innerHTML = "Fallo en ejecución: " + exception.message;
-      }
-    }
-
-    function codigoDetectadoEnVivo(decodedText) {
-      if (procesandoScan) return;
-      procesandoScan = true;
-      
-      const r = document.getElementById("resultado");
-      r.className = "";
-      r.innerHTML = "Consultando validez del código...";
-      
-      html5QrcodeScanner.stop().then(() => {
-        const viejoScript = document.getElementById("jsonp-request");
-        if (viejoScript) viejoScript.remove();
-        
-        const accionBackend = modoAccionActual === "escanearAcceso" ? "buscarAsignar" : "devolver";
-        
-        // MANEJO DE TIMEOUT: Si Google no responde en 6 segundos, liberamos el bloqueo para evitar congelamientos
-        clearTimeout(temporizadorRed);
-        temporizadorRed = setTimeout(() => {
-          maniobrarErrorServidor("Red inestable. Verifique en Sheets si ingresó o vuelva a escanear.");
-        }, 6000);
-
-        const script = document.createElement("script");
-        script.id = "jsonp-request";
-        script.src = WEB_APP_URL + "?codigoQR=" + encodeURIComponent(decodedText) + "&accion=" + accionBackend + "&callback=procesarRespuestaServidorJSONP";
-        
-        script.onerror = function() {
-          clearTimeout(temporizadorRed);
-          maniobrarErrorServidor("Error de red o caída de conexión con Google.");
-        };
-        document.body.appendChild(script);
-      }).catch(err => {
-        procesandoScan = false;
-      });
-    }
-
-    // RETORNO GLOBAL JSONP
-    window.procesarRespuestaServidorJSONP = function(data) {
-      clearTimeout(temporizadorRed); // Conexión exitosa, cancelamos la alerta de timeout
-      
-      const script = document.getElementById("jsonp-request");
-      if (script) script.remove();
-      
-      const r = document.getElementById("resultado");
-      
-      if (data.ok) {
-        r.innerHTML = "";
-        r.className = "";
-        
-        if (modoAccionActual === "escanearAcceso") {
-          document.getElementById("cedula-nombre").innerText = data.nombre || "No especificado";
-          document.getElementById("cedula-num").innerText = data.cedula || "No especificado";
-          document.getElementById("cedula-turno").innerText = data.turno || "No especificado";
-          document.getElementById("cedula-area").innerText = data.area || "No especificado";
-          
-          const imgElement = document.getElementById("cedula-img");
-          if (data.imagenCedula) {
-            imgElement.src = data.imagenCedula;
-            imgElement.style.display = "block";
-          } else {
-            imgElement.style.display = "none";
-          }
-
-          document.getElementById("vista-escaneo").style.display = "none";
-          document.getElementById("vista-resultado").style.display = "block";
-
-        } else if (modoAccionActual === "escanearDevolver") {
-          document.getElementById("devolver-mensaje-badge").innerText = "✓ SALIDA REGISTRADA";
-          document.getElementById("devolver-nombre").innerText = data.nombre || "No especificado";
-          document.getElementById("devolver-cedula").innerText = data.cedula || "No especificado";
-          document.getElementById("devolver-turno").innerText = data.turno || "No especificado";
-          
-          const imgElement = document.getElementById("devolver-img");
-          if (data.imagenCedula) {
-            imgElement.src = data.imagenCedula;
-            imgElement.style.display = "block";
-          } else {
-            imgElement.style.display = "none";
-          }
-
-          document.getElementById("vista-escaneo").style.display = "none";
-          document.getElementById("vista-resultado-devolver").style.display = "block";
+        .card {
+          padding: 15px;
         }
-      } else {
-        r.className = data.color || "red";
-        r.innerHTML = `<strong>${data.mensaje || "Error"}</strong><br>
-          ${data.nombre ? 'Nombre: ' + data.nombre + '<br>' : ''} 
-          ${data.turno ? 'Turno: ' + data.turno + '<br>' : ''}
-          ${data.area ? 'Area: ' + data.area : ''}`;
-        
-        setTimeout(() => {
-          r.innerHTML = "";
-          r.className = "";
-          procesandoScan = false;
-          iniciarVideoTransmision();
-        }, 5000); // Reducido a 5 segundos para agilizar los flujos de fila
+        .grid {
+          gap: 8px;
+        }
+        .action {
+          font-size: 12px;
+          min-height: 70px;
+        }
       }
-    };
-
-    function maniobrarErrorServidor(mensaje) {
-      const script = document.getElementById("jsonp-request");
-      if (script) script.remove();
-
-      const r = document.getElementById("resultado");
-      r.className = "orange";
-      r.innerHTML = "<strong>" + mensaje + "</strong>";
-      
-      setTimeout(() => {
-        r.innerHTML = "";
-        r.className = "";
-        procesandoScan = false;
-        iniciarVideoTransmision();
-      }, 5000);
-    }
-
-    function cancelarEscaneo() {
-      clearTimeout(temporizadorRed);
-      if (html5QrcodeScanner) {
-        html5QrcodeScanner.stop().then(() => { 
-          regresarAlMenuPrincipal(); 
-        }).catch(() => { 
-          regresarAlMenuPrincipal(); 
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>CONTROL DE ASISTENCIA QR</h1>
+        <p>Identificación y registro de movimientos del personal</p>
+      </header>
+      <section id="menuCard" class="card">
+        <p class="section-title">SELECCIONE EL MOVIMIENTO</p>
+        <div id="mealSelector" class="selector">
+          <label for="mealType">TIPO DE COMIDA</label
+          ><select id="mealType">
+            <option value="">Cargando comidas...</option>
+          </select>
+          <p class="hint">Opciones administradas desde Supabase.</p>
+        </div>
+        <div id="permissionSelector" class="selector">
+          <label for="permissionType">MOTIVO DEL PERMISO</label
+          ><select id="permissionType">
+            <option value="">Cargando permisos...</option>
+          </select>
+          <p class="hint">Opciones administradas desde Supabase.</p>
+        </div>
+        <div class="grid">
+          <button class="action blue" onclick="elegirAccion('INGRESO')">
+            REGISTRAR INGRESO<span>Inicio de jornada</span>
+          </button>
+          <button class="action dark" onclick="elegirAccion('SALIDA')">
+            REGISTRAR SALIDA<span>Fin de jornada</span>
+          </button>
+        </div>
+      </section>
+      <section id="scanCard" class="card">
+        <div class="scan-head">
+          <strong id="selectedAction">ESCANEAR QR</strong
+          ><span class="pill">LECTOR QR</span>
+        </div>
+        <div id="reader"></div>
+        <div id="status">Preparando cámara...</div>
+        <button class="secondary" onclick="cancelarEscaneo()">CANCELAR</button>
+      </section>
+      <section id="resultCard" class="card">
+        <div class="person">
+          <img id="photo" alt="Fotografía del trabajador" hidden />
+          <div>
+            <h2 id="personName">-</h2>
+            <p id="personCedula">Cédula: -</p>
+            <p id="personArea">Área: -</p>
+          </div>
+        </div>
+        <div id="confirmation" class="success"></div>
+        <div id="details" class="details"></div>
+        <button
+          class="action blue wide"
+          style="margin-top: 18px"
+          onclick="volverMenu()"
+        >
+          NUEVO REGISTRO
+        </button>
+      </section>
+      <footer>Control de asistencia · Ecuador · Guayaquil</footer>
+    </main>
+    <script>
+      "use strict";
+      // CONFIGURAR CON LOS DATOS DEL PROYECTO SUPABASE.
+      const SUPABASE_URL = "https://dffmmsmcwbzxxgdczzww.supabase.co";
+      const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRmZm1tc21jd2J6eHhnZGN6end3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1NTMwNzksImV4cCI6MjEwNTEyOTA3OX0.diGOnxMrG5nwK6XhXdLcj72tbEwKtiUd8VANpUFAA1Y";
+      const TIME_ZONE = "America/Guayaquil";
+      const $ = (id) => document.getElementById(id);
+      let qrReader = null,
+        cameraRunning = false,
+        busy = false,
+        currentAction = "";
+      let catalogs = { comidas: [], permisos: [] };
+      const LABELS = {
+        INGRESO: "REGISTRAR INGRESO",
+        SALIDA: "REGISTRAR SALIDA",
+        INICIO_COMIDA: "INICIO DE COMIDA",
+        FIN_COMIDA: "FIN DE COMIDA",
+        INICIO_PERMISO: "INICIO DE PERMISO",
+        FIN_PERMISO: "FIN DE PERMISO",
+      };
+      function configOk() {
+        return (
+          SUPABASE_URL.startsWith("https://") &&
+          !SUPABASE_URL.includes("TU-PROYECTO") &&
+          SUPABASE_ANON_KEY !== "TU_CLAVE_ANON"
+        );
+      }
+      async function rpc(name, body = {}) {
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
+          method: "POST",
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
         });
-      } else {
-        regresarAlMenuPrincipal();
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok)
+          throw new Error(
+            d.message || d.details || d.hint || `Error HTTP ${r.status}`,
+          );
+        return d;
       }
-    }
-
-    function regresarAlMenuPrincipal() {
-      clearTimeout(temporizadorRed);
-      procesandoScan = false;
-      modoAccionActual = "";
-      
-      document.getElementById("cedula-nombre").innerText = "-";
-      document.getElementById("cedula-num").innerText = "-";
-      document.getElementById("cedula-turno").innerText = "-";
-      document.getElementById("cedula-area").innerText = "-";
-      document.getElementById("cedula-img").src = "";
-      
-      document.getElementById("devolver-nombre").innerText = "-";
-      document.getElementById("devolver-cedula").innerText = "-";
-      document.getElementById("devolver-turno").innerText = "-";
-      document.getElementById("devolver-img").src = "";
-      
-      const r = document.getElementById("resultado");
-      r.innerHTML = "";
-      r.className = "";
-      
-      document.getElementById("vista-resultado").style.display = "none";
-      document.getElementById("vista-resultado-devolver").style.display = "none";
-      document.getElementById("btnCancelar").style.display = "none";
-      document.getElementById("menu-botones").style.display = "block";
-      document.getElementById("vista-escaneo").style.display = "block";
-    }
-
-  </script>
-</body>
+      async function cargarCatalogos() {
+        if (!configOk()) return;
+        try {
+          const d = await rpc("obtener_catalogos_asistencia");
+          if (!d.ok)
+            throw new Error(
+              d.mensaje || "No se pudieron cargar los catálogos.",
+            );
+          catalogs = d;
+          llenarSelect("mealType", d.comidas, "Seleccione el tipo de comida");
+          llenarSelect(
+            "permissionType",
+            d.permisos,
+            "Seleccione el motivo del permiso",
+          );
+        } catch (e) {
+          $("mealType").innerHTML =
+            '<option value="">Error al cargar comidas</option>';
+          $("permissionType").innerHTML =
+            '<option value="">Error al cargar permisos</option>';
+          console.error(e);
+        }
+      }
+      function llenarSelect(id, items, placeholder) {
+        const s = $(id);
+        s.innerHTML = "";
+        const first = document.createElement("option");
+        first.value = "";
+        first.textContent = placeholder;
+        s.appendChild(first);
+        items.forEach((x) => {
+          const o = document.createElement("option");
+          o.value = x.id;
+          o.textContent = x.nombre;
+          s.appendChild(o);
+        });
+      }
+      function elegirAccion(a) {
+        if (!configOk()) {
+          alert(
+            "Configure SUPABASE_URL y SUPABASE_ANON_KEY al inicio del HTML.",
+          );
+          return;
+        }
+        $("mealSelector").style.display =
+          a === "INICIO_COMIDA" ? "block" : "none";
+        $("permissionSelector").style.display =
+          a === "INICIO_PERMISO" ? "block" : "none";
+        if (a === "INICIO_COMIDA" && !catalogs.comidas.length) {
+          alert("No hay tipos de comida activos en Supabase.");
+          return;
+        }
+        if (a === "INICIO_PERMISO" && !catalogs.permisos.length) {
+          alert("No hay tipos de permiso activos en Supabase.");
+          return;
+        }
+        if (a === "INICIO_COMIDA" && !$("mealType").value) {
+          $("mealType").focus();
+          alert("Seleccione el tipo de comida.");
+          return;
+        }
+        if (a === "INICIO_PERMISO" && !$("permissionType").value) {
+          $("permissionType").focus();
+          alert("Seleccione el motivo del permiso.");
+          return;
+        }
+        currentAction = a;
+        $("menuCard").style.display = "none";
+        $("resultCard").style.display = "none";
+        $("scanCard").style.display = "block";
+        $("selectedAction").textContent = LABELS[a];
+        iniciarCamara();
+      }
+      function estadoCamara(m, t = "") {
+        $("status").textContent = m;
+        $("status").className = t;
+      }
+      async function iniciarCamara() {
+        if (typeof Html5Qrcode === "undefined") {
+          estadoCamara(
+            "No se encontró html5-qrcode.min.js en el repositorio.",
+            "error",
+          );
+          return;
+        }
+        try {
+          if (!qrReader) qrReader = new Html5Qrcode("reader");
+          estadoCamara("Solicitando acceso a la cámara...");
+          await qrReader.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 240, height: 240 }, aspectRatio: 1 },
+            qrDetectado,
+          );
+          cameraRunning = true;
+          estadoCamara(
+            "Cámara activa. Enfoque el código QR del trabajador.",
+            "ok",
+          );
+        } catch (e) {
+          estadoCamara(
+            "No se pudo activar la cámara: " + (e.message || e),
+            "error",
+          );
+        }
+      }
+      async function detenerCamara() {
+        if (qrReader && cameraRunning) {
+          try {
+            await qrReader.stop();
+          } catch (_) {}
+          cameraRunning = false;
+        }
+      }
+      async function qrDetectado(text) {
+        if (busy) return;
+        busy = true;
+        estadoCamara("Validando y registrando en Supabase...");
+        await detenerCamara();
+        try {
+          const payload = {
+            p_codigo_qr: String(text).trim(),
+            p_tipo_evento: currentAction,
+            p_tipo_comida_id:
+              currentAction === "INICIO_COMIDA"
+                ? Number($("mealType").value)
+                : null,
+            p_tipo_permiso_id:
+              currentAction === "INICIO_PERMISO"
+                ? Number($("permissionType").value)
+                : null,
+          };
+          const d = await rpc("registrar_evento_asistencia", payload);
+          if (!d.ok) {
+            estadoCamara(d.mensaje || "Movimiento rechazado.", "error");
+            setTimeout(reintentarCamara, 2600);
+            return;
+          }
+          mostrarResultado(d);
+        } catch (e) {
+          estadoCamara("Error de comunicación: " + e.message, "error");
+          setTimeout(reintentarCamara, 3000);
+        }
+      }
+      function reintentarCamara() {
+        if ($("scanCard").style.display !== "none") {
+          busy = false;
+          iniciarCamara();
+        }
+      }
+      function mostrarResultado(d) {
+        $("scanCard").style.display = "none";
+        $("resultCard").style.display = "block";
+        $("personName").textContent = d.nombre || "Personal identificado";
+        $("personCedula").textContent = "Cédula: " + (d.cedula || "-");
+        $("personArea").textContent = "Área: " + (d.area || "No especificada");
+        const img = $("photo"),
+          url = driveThumbnail(d.url_foto);
+        if (url) {
+          img.src = url;
+          img.hidden = false;
+          img.onerror = () => (img.hidden = true);
+        } else {
+          img.removeAttribute("src");
+          img.hidden = true;
+        }
+        $("confirmation").textContent = d.mensaje || "MOVIMIENTO REGISTRADO";
+        const lines = [
+          `<b>Movimiento:</b> ${esc(LABELS[d.tipo_evento] || d.tipo_evento || "-")}`,
+          `<b>Fecha y hora:</b> ${esc(formatDate(d.fecha_hora))}`,
+        ];
+        if (d.tipo_comida) lines.push(`<b>Comida:</b> ${esc(d.tipo_comida)}`);
+        if (d.tipo_permiso)
+          lines.push(`<b>Permiso:</b> ${esc(d.tipo_permiso)}`);
+        if (d.tipo_turno)
+          lines.push(`<b>Clasificación:</b> ${esc(d.tipo_turno)}`);
+        if (d.estado_jornada)
+          lines.push(`<b>Jornada:</b> ${esc(d.estado_jornada)}`);
+        $("details").innerHTML = lines.join("<br>");
+      }
+      function formatDate(v) {
+        return v
+          ? new Intl.DateTimeFormat("es-EC", {
+              timeZone: TIME_ZONE,
+              dateStyle: "medium",
+              timeStyle: "medium",
+            }).format(new Date(v))
+          : "-";
+      }
+      function driveThumbnail(url) {
+        const v = String(url || "").trim();
+        if (!v) return "";
+        const a = v.match(/[?&]id=([a-zA-Z0-9_-]+)/),
+          b = v.match(/\/d\/([a-zA-Z0-9_-]+)/),
+          id = a ? a[1] : b ? b[1] : "";
+        return id
+          ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w300`
+          : v;
+      }
+      function esc(v) {
+        return String(v).replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+      }
+      async function cancelarEscaneo() {
+        await detenerCamara();
+        volverMenu();
+      }
+      async function volverMenu() {
+        await detenerCamara();
+        currentAction = "";
+        busy = false;
+        $("scanCard").style.display = "none";
+        $("resultCard").style.display = "none";
+        $("menuCard").style.display = "block";
+        $("mealSelector").style.display = "none";
+        $("permissionSelector").style.display = "none";
+      }
+      window.addEventListener("beforeunload", () => {
+        if (qrReader && cameraRunning) qrReader.stop().catch(() => {});
+      });
+      cargarCatalogos();
+    </script>
+  </body>
 </html>
